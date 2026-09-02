@@ -1,9 +1,9 @@
 import { useState } from "react";
 import type { FC, FormEvent } from "react";
-import { savePGConfig } from "../config/pgConfig";
+import { savePGConfig, resetPGConfigToDefaults } from "../config/pgConfig";
 import type { PGConfig } from "../config/pgConfig";
 import { setReceiptSequence, peekNextReceiptNumber } from "../utils/receiptStorage";
-import { X, Building2, Save } from "lucide-react";
+import { X, Building2, Save, RotateCcw, Stamp } from "lucide-react";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -26,7 +26,14 @@ export const SettingsModal: FC<SettingsModalProps> = ({
   const [addressLine3, setAddressLine3] = useState(currentConfig.addressLines[2] || "");
   const [proprietorName, setProprietorName] = useState(currentConfig.proprietorName);
   const [proprietorPhone, setProprietorPhone] = useState(currentConfig.proprietorPhone);
-  
+  const [receiptTitle, setReceiptTitle] = useState(currentConfig.receiptTitle || "RENT RECEIPT");
+
+  // Seal details
+  const [sealTitle, setSealTitle] = useState(currentConfig.seal?.title || "Sri Gurukottureshwara Gents PG");
+  const [sealRoad, setSealRoad] = useState(currentConfig.seal?.road || "Rashmi Hostel Road,");
+  const [sealCityPin, setSealCityPin] = useState(currentConfig.seal?.cityPin || "Davangere-577006");
+  const [sealMob, setSealMob] = useState(currentConfig.seal?.mob || "Mob : 9986231979");
+
   const currentNext = peekNextReceiptNumber();
   const [nextSeq, setNextSeq] = useState(currentNext.rawNumber);
 
@@ -38,7 +45,14 @@ export const SettingsModal: FC<SettingsModalProps> = ({
       pgName: pgName.trim(),
       addressLines: [addressLine1, addressLine2, addressLine3].filter(Boolean),
       proprietorName: proprietorName.trim(),
-      proprietorPhone: proprietorPhone.trim()
+      proprietorPhone: proprietorPhone.trim(),
+      receiptTitle: receiptTitle.trim(),
+      seal: {
+        title: sealTitle.trim(),
+        road: sealRoad.trim(),
+        cityPin: sealCityPin.trim(),
+        mob: sealMob.trim()
+      }
     });
 
     if (nextSeq > 0 && nextSeq !== currentNext.rawNumber) {
@@ -48,6 +62,24 @@ export const SettingsModal: FC<SettingsModalProps> = ({
 
     onConfigSaved(updated);
     onClose();
+  };
+
+  const handleReset = () => {
+    if (confirm("Reset all PG details and settings to default?")) {
+      const def = resetPGConfigToDefaults();
+      setPgName(def.pgName);
+      setAddressLine1(def.addressLines[0] || "");
+      setAddressLine2(def.addressLines[1] || "");
+      setAddressLine3(def.addressLines[2] || "");
+      setProprietorName(def.proprietorName);
+      setProprietorPhone(def.proprietorPhone);
+      setReceiptTitle(def.receiptTitle);
+      setSealTitle(def.seal.title);
+      setSealRoad(def.seal.road);
+      setSealCityPin(def.seal.cityPin);
+      setSealMob(def.seal.mob);
+      onConfigSaved(def);
+    }
   };
 
   return (
@@ -60,9 +92,9 @@ export const SettingsModal: FC<SettingsModalProps> = ({
               <Building2 className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 text-base">PG Details & Settings</h3>
+              <h3 className="font-bold text-slate-900 text-base">Edit PG Details & Settings</h3>
               <p className="text-xs text-slate-500">
-                Values will permanently show on all generated receipts
+                Customized values save directly to this browser / device
               </p>
             </div>
           </div>
@@ -76,6 +108,28 @@ export const SettingsModal: FC<SettingsModalProps> = ({
 
         {/* Body */}
         <form onSubmit={handleSave} className="p-6 overflow-y-auto space-y-4 flex-1">
+          {/* Next Receipt Number Setting */}
+          <div className="p-3 bg-indigo-50/70 border border-indigo-100 rounded-xl">
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-bold text-indigo-950 uppercase tracking-wide">
+                Next Receipt Sequence Number
+              </label>
+              <span className="text-xs font-mono font-bold text-indigo-700">
+                Current: #{currentNext.formatted}
+              </span>
+            </div>
+            <input
+              type="number"
+              min="1"
+              value={nextSeq}
+              onChange={(e) => setNextSeq(Math.max(1, parseInt(e.target.value) || 1))}
+              className="w-full px-3 py-2 text-sm rounded-lg border border-indigo-200 bg-white focus:ring-2 focus:ring-indigo-300 focus:border-indigo-600 font-mono font-bold text-indigo-950"
+            />
+            <p className="text-[11px] text-indigo-600/80 mt-1">
+              Change this anytime if using the link on a new phone or account (e.g. 1756).
+            </p>
+          </div>
+
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
               PG Name
@@ -84,7 +138,7 @@ export const SettingsModal: FC<SettingsModalProps> = ({
               type="text"
               value={pgName}
               onChange={(e) => setPgName(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-600"
+              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-600 font-medium"
               required
             />
           </div>
@@ -125,59 +179,110 @@ export const SettingsModal: FC<SettingsModalProps> = ({
                 type="text"
                 value={proprietorName}
                 onChange={(e) => setProprietorName(e.target.value)}
-                placeholder="Proprietor Name"
+                placeholder="Kottresh C"
                 className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-600"
               />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                Contact Phone
+                Cell / Phone Number
               </label>
               <input
                 type="text"
                 value={proprietorPhone}
                 onChange={(e) => setProprietorPhone(e.target.value)}
-                placeholder="+91 XXXXXXXXXX"
+                placeholder="9986231979"
                 className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-600"
               />
             </div>
           </div>
 
-          <div className="pt-3 border-t border-slate-100">
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-bold text-slate-700 uppercase">
-                Next Receipt Sequence Number
-              </label>
-              <span className="text-xs text-slate-400">Current: #{currentNext.formatted}</span>
-            </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+              Receipt Header Title
+            </label>
             <input
-              type="number"
-              min="1"
-              value={nextSeq}
-              onChange={(e) => setNextSeq(Math.max(1, parseInt(e.target.value) || 1))}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-600 font-mono"
+              type="text"
+              value={receiptTitle}
+              onChange={(e) => setReceiptTitle(e.target.value)}
+              placeholder="RENT RECEIPT"
+              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-600 font-semibold"
             />
-            <p className="text-[11px] text-slate-400 mt-1">
-              Adjust if you need to start from a specific sequence number.
-            </p>
+          </div>
+
+          {/* Official Seal Details */}
+          <div className="pt-3 border-t border-slate-100 space-y-2">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-blue-900 uppercase">
+              <Stamp className="w-4 h-4 text-blue-700" />
+              Official Rubber Stamp / Seal Text
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <span className="text-[10px] text-slate-500 block">Seal Line 1 (Name)</span>
+                <input
+                  type="text"
+                  value={sealTitle}
+                  onChange={(e) => setSealTitle(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs rounded border border-slate-300"
+                />
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-500 block">Seal Line 2 (Road)</span>
+                <input
+                  type="text"
+                  value={sealRoad}
+                  onChange={(e) => setSealRoad(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs rounded border border-slate-300"
+                />
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-500 block">Seal Line 3 (City & Pin)</span>
+                <input
+                  type="text"
+                  value={sealCityPin}
+                  onChange={(e) => setSealCityPin(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs rounded border border-slate-300"
+                />
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-500 block">Seal Line 4 (Mobile)</span>
+                <input
+                  type="text"
+                  value={sealMob}
+                  onChange={(e) => setSealMob(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs rounded border border-slate-300"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Buttons */}
-          <div className="pt-4 flex items-center justify-end gap-2">
+          <div className="pt-4 flex items-center justify-between border-t border-slate-100">
             <button
               type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+              onClick={handleReset}
+              className="text-xs font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1"
             >
-              Cancel
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset Defaults</span>
             </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-xs font-semibold text-white bg-indigo-900 hover:bg-indigo-950 rounded-lg shadow-xs flex items-center gap-1.5 transition-colors"
-            >
-              <Save className="w-3.5 h-3.5" />
-              <span>Save Changes</span>
-            </button>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 text-xs font-semibold text-white bg-indigo-900 hover:bg-indigo-950 rounded-lg shadow-xs flex items-center gap-1.5 transition-colors"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>Save Changes</span>
+              </button>
+            </div>
           </div>
         </form>
       </div>

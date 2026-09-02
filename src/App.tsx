@@ -193,6 +193,8 @@ export function App() {
               isGenerating={isGenerating}
               successReceiptNo={successReceiptNo}
               onClearSuccess={() => setSuccessReceiptNo(null)}
+              onOpenSettings={() => setIsSettingsOpen(true)}
+              onUpdateReceiptNumber={() => refreshPreviewReceiptNo()}
               onFormChange={handleFormChange}
             />
           </div>

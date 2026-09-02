@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import type { FC, FormEvent } from "react";
 import { PAYMENT_MONTHS, getAvailableYears, getCurrentMonthName, getCurrentYear } from "../utils/dateUtils";
 import { numberToWordsIndian } from "../utils/amountToWords";
-import { peekNextReceiptNumber } from "../utils/receiptStorage";
-import { FileDown, CheckCircle2, AlertCircle, Sparkles, RefreshCw } from "lucide-react";
+import { peekNextReceiptNumber, setReceiptSequence } from "../utils/receiptStorage";
+import { FileDown, CheckCircle2, AlertCircle, Sparkles, RefreshCw, Pencil, Check, Settings } from "lucide-react";
 
 export interface FormData {
   residentName: string;
@@ -23,6 +23,8 @@ interface BillFormProps {
   isGenerating: boolean;
   successReceiptNo: string | null;
   onClearSuccess: () => void;
+  onOpenSettings?: () => void;
+  onUpdateReceiptNumber?: (num: number) => void;
   onFormChange?: (data: {
     residentName: string;
     paymentMonth: string;
@@ -37,6 +39,8 @@ export const BillForm: FC<BillFormProps> = ({
   isGenerating,
   successReceiptNo,
   onClearSuccess,
+  onOpenSettings,
+  onUpdateReceiptNumber,
   onFormChange
 }) => {
   const [residentName, setResidentName] = useState("");
@@ -45,8 +49,23 @@ export const BillForm: FC<BillFormProps> = ({
   const [amount, setAmount] = useState("");
   const [errors, setErrors] = useState<{ name?: string; amount?: string }>({});
 
-  const availableYears = getAvailableYears();
+  // Inline receipt number edit state
+  const [isEditingReceiptNo, setIsEditingReceiptNo] = useState(false);
   const nextReceipt = peekNextReceiptNumber();
+  const [customReceiptInput, setCustomReceiptInput] = useState(String(nextReceipt.rawNumber));
+
+  const availableYears = getAvailableYears();
+
+  const handleSaveCustomReceiptNo = () => {
+    const parsed = parseInt(customReceiptInput.trim(), 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      setReceiptSequence(parsed - 1);
+      if (onUpdateReceiptNumber) {
+        onUpdateReceiptNumber(parsed);
+      }
+    }
+    setIsEditingReceiptNo(false);
+  };
 
   // Calculate amount in words in real-time
   const numericAmount = parseFloat(amount);
@@ -106,16 +125,72 @@ export const BillForm: FC<BillFormProps> = ({
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 sm:p-7">
-      <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-100">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 mb-5 border-b border-slate-100 gap-3">
         <div>
           <h2 className="text-lg font-bold text-slate-900">Generate Receipt</h2>
           <p className="text-xs text-slate-500 mt-0.5">Fill in the resident payment details below</p>
         </div>
-        <div className="text-right">
-          <span className="text-[11px] font-semibold uppercase text-slate-400 block">Next Bill No</span>
-          <span className="font-mono text-sm sm:text-base font-bold text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
-            #{nextReceipt.formatted}
+
+        {/* Editable Receipt Number Box */}
+        <div className="flex items-center sm:flex-col sm:items-end justify-between sm:justify-start gap-1 bg-slate-50 sm:bg-transparent p-2 sm:p-0 rounded-lg border sm:border-0 border-slate-200">
+          <span className="text-[11px] font-semibold uppercase text-slate-400 block">
+            Next Bill No
           </span>
+
+          {isEditingReceiptNo ? (
+            <div className="flex items-center gap-1">
+              <span className="text-xs font-bold text-slate-500 font-mono">#</span>
+              <input
+                type="number"
+                min="1"
+                value={customReceiptInput}
+                onChange={(e) => setCustomReceiptInput(e.target.value)}
+                className="w-20 px-2 py-0.5 text-xs font-mono font-bold rounded border border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSaveCustomReceiptNo();
+                  if (e.key === "Escape") setIsEditingReceiptNo(false);
+                }}
+              />
+              <button
+                type="button"
+                onClick={handleSaveCustomReceiptNo}
+                className="p-1 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded"
+                title="Save Receipt No"
+              >
+                <Check className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <span className="font-mono text-sm sm:text-base font-bold text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                #{nextReceipt.formatted}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomReceiptInput(String(nextReceipt.rawNumber));
+                  setIsEditingReceiptNo(true);
+                }}
+                className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-0.5 p-1 rounded"
+                title="Change starting receipt number"
+              >
+                <Pencil className="w-3 h-3" />
+                <span>Edit</span>
+              </button>
+            </div>
+          )}
+
+          {onOpenSettings && (
+            <button
+              type="button"
+              onClick={onOpenSettings}
+              className="text-[11px] text-slate-500 hover:text-slate-800 flex items-center gap-1 mt-0.5"
+            >
+              <Settings className="w-3 h-3 text-slate-400" />
+              <span>Edit PG Details</span>
+            </button>
+          )}
         </div>
       </div>
 
